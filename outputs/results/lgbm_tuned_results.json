@@ -1,0 +1,27 @@
+{
+  "experiment_id": "E03a_lgbm_tuned_v3",
+  "feature_version": "v3",
+  "n_train": 285,
+  "n_features": 15,
+  "naive_baseline": 2.907,
+  "models": [
+    {
+      "model": "lightgbm",
+      "cv_mean": 1.274,
+      "cv_std": 1.0127,
+      "fold_scores": [
+        0.4636,
+        1.2974,
+        0.2625,
+        1.2167,
+        3.13
+      ],
+      "train_score": 3.0748,
+      "train_time_s": 0.3,
+      "oof_path": "outputs\\oof\\lgbm_tuned\\lightgbm_oof.parquet"
+    }
+  ],
+  "best_model": "lightgbm",
+  "best_cv": 1.274,
+  "total_time_s": 0.3
+}

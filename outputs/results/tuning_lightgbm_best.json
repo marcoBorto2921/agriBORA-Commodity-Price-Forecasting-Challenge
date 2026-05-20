@@ -1,0 +1,19 @@
+{
+  "experiment_id": "E03a_lgbm_tuned_v3",
+  "model": "lightgbm",
+  "feature_version": "v3",
+  "best_cv_score": 1.274019863222018,
+  "best_params": {
+    "objective": "regression_l1",
+    "learning_rate": 0.030648415631451105,
+    "num_leaves": 8,
+    "min_child_samples": 26,
+    "feature_fraction": 0.7546128144063826,
+    "bagging_fraction": 0.8347146065690056,
+    "reg_alpha": 0.08634991047041456,
+    "reg_lambda": 1.9013639879713312e-07
+  },
+  "n_trials_completed": 100,
+  "direction": "minimize",
+  "train_time_seconds": 18.7
+}

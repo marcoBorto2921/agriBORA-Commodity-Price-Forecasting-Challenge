@@ -1,0 +1,57 @@
+{
+  "experiment_id": "E02_v3_features_pruned",
+  "feature_version": "v3",
+  "n_train": 285,
+  "n_features": 15,
+  "naive_baseline": 2.907,
+  "models": [
+    {
+      "model": "lightgbm",
+      "cv_mean": 1.6879,
+      "cv_std": 0.9044,
+      "fold_scores": [
+        0.4277,
+        1.906,
+        1.8249,
+        1.1342,
+        3.1467
+      ],
+      "train_score": 3.6585,
+      "train_time_s": 0.5,
+      "oof_path": "outputs\\oof\\v2\\lightgbm_oof.parquet"
+    },
+    {
+      "model": "xgboost",
+      "cv_mean": 1.7355,
+      "cv_std": 1.1258,
+      "fold_scores": [
+        0.3617,
+        2.4322,
+        1.0953,
+        1.235,
+        3.5532
+      ],
+      "train_score": 2.7598,
+      "train_time_s": 2.7,
+      "oof_path": "outputs\\oof\\v2\\xgboost_oof.parquet"
+    },
+    {
+      "model": "trend_extrapolation",
+      "cv_mean": 2.4594,
+      "cv_std": 1.465,
+      "fold_scores": [
+        1.9796,
+        1.9315,
+        1.2603,
+        1.7812,
+        5.3445
+      ],
+      "train_score": null,
+      "train_time_s": 0.1,
+      "oof_path": "outputs\\oof\\v2\\trend_extrapolation_oof.parquet"
+    }
+  ],
+  "best_model": "lightgbm",
+  "best_cv": 1.6879,
+  "total_time_s": 3.3
+}

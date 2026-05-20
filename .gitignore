@@ -1,0 +1,23 @@
+# Environment
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+.env
+
+# Private project management (Claude Code internal files)
+.claude/
+
+# Competition data (not allowed to redistribute)
+agribora-commodity-price-forecasting-challenge*/
+
+# Large model binaries
+outputs/models/
+
+# Training logs
+outputs/training/
+
+# IDE
+.vscode/
+.idea/
+*.swp

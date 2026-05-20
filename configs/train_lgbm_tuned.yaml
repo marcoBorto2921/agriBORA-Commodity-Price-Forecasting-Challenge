@@ -1,0 +1,70 @@
+# ============================================================
+# LightGBM tuned training config — agriBORA Phase 5a
+# Best params from E03a Optuna run (CV 1.2740)
+# ============================================================
+
+experiment_id: "E03a_lgbm_tuned_v3"
+
+task_type: "regression"
+target_col: "WholeSale"
+metric: "mae_rmse_blend"
+feature_version: "v3"
+train_path: "outputs/features/v3/train_fe.parquet"
+test_path: "outputs/features/v3/test_fe.parquet"
+
+cv_strategy: "walk_forward"
+n_folds: 5
+time_col: "Year_Week"
+random_state: 42
+
+feature_cols:
+  - lag1_price
+  - lag2_price
+  - rolling_4w_mean
+  - deviation_from_rolling_mean
+  - rolling_4w_max
+  - price_momentum
+  - week_of_year
+  - weeks_in_lean_season
+  - is_short_harvest_window
+  - weeks_to_long_harvest
+  - nairobi_lag1
+  - ug_lag1
+  - national_mean_lag1
+  - nairobi_ug_spread
+  - County
+
+categorical_cols:
+  - County
+
+oof_dir: "outputs/oof/lgbm_tuned"
+models_dir: "outputs/models/lgbm_tuned"
+submissions_dir: "outputs/submissions/lgbm_tuned"
+results_path: "outputs/results/lgbm_tuned_results.json"
+log_path: "outputs/training/lgbm_tuned_run.log"
+
+models:
+  lightgbm:
+    enabled: true
+    params:
+      objective: "regression_l1"
+      metric: "mae"
+      n_estimators: 2000
+      learning_rate: 0.030648415631451105
+      num_leaves: 8
+      min_child_samples: 26
+      feature_fraction: 0.7546128144063826
+      bagging_fraction: 0.8347146065690056
+      bagging_freq: 1
+      reg_alpha: 0.08634991047041456
+      reg_lambda: 1.9013639879713312e-07
+      verbose: -1
+      random_state: 42
+      device: "cpu"
+    early_stopping_rounds: 100
+
+  xgboost:
+    enabled: false
+
+  trend_extrapolation:
+    enabled: false

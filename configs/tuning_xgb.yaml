@@ -1,0 +1,58 @@
+# ============================================================
+# XGBoost tuning config — agriBORA Phase 5a
+# Features: v2 (22 features, WITH KAMIS — mandatory for XGB)
+# Baseline: local=2.23, private LB=+0.479 (best overall)
+# ============================================================
+
+experiment_id: "E03b_xgb_tuned_v2"
+
+model: "xgboost"
+feature_version: "v2"
+train_path: "outputs/features/v2/train_fe.parquet"
+
+target_col: "WholeSale"
+time_col: "Year_Week"
+n_folds: 5
+seed: 42
+
+feature_cols:
+  - lag1_price
+  - lag2_price
+  - rolling_4w_mean
+  - deviation_from_rolling_mean
+  - rolling_4w_max
+  - price_vs_4w_max
+  - price_momentum
+  - consecutive_up_weeks
+  - week_of_year
+  - is_lean_season
+  - weeks_in_lean_season
+  - is_short_harvest_window
+  - weeks_to_long_harvest
+  - nairobi_lag1
+  - ug_lag1
+  - national_mean_lag1
+  - nairobi_ug_spread
+  - kamis_wholesale_lag1
+  - kamis_retail_lag1
+  - kamis_ug_supply_lag1
+  - kamis_national_supply_lag1
+  - is_kamis_augmented
+  - County
+
+categorical_cols:
+  - County
+
+optuna:
+  n_trials: 100
+  timeout: 3600        # stop at first: 100 trials OR 1 hour
+
+search_space:
+  objective:         ["reg:absoluteerror", "reg:squarederror"]   # MAE vs MSE
+  learning_rate:     [0.01, 0.1]
+  max_depth:         [3, 6]
+  min_child_weight:  [1, 10]
+  subsample:         [0.6, 1.0]
+  colsample_bytree:  [0.5, 1.0]
+  reg_alpha:         [1.0e-8, 10.0]
+  reg_lambda:        [1.0e-8, 10.0]

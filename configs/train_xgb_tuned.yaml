@@ -1,0 +1,78 @@
+# ============================================================
+# XGBoost tuned training config — agriBORA Phase 5a
+# Best params from E03b Optuna run (CV 1.2716)
+# Features: v2 (22 features WITH KAMIS — mandatory for XGB)
+# ============================================================
+
+experiment_id: "E03b_xgb_tuned_v2"
+
+task_type: "regression"
+target_col: "WholeSale"
+metric: "mae_rmse_blend"
+feature_version: "v2"
+train_path: "outputs/features/v2/train_fe.parquet"
+test_path: "outputs/features/v2/test_fe.parquet"
+
+cv_strategy: "walk_forward"
+n_folds: 5
+time_col: "Year_Week"
+random_state: 42
+
+feature_cols:
+  - lag1_price
+  - lag2_price
+  - rolling_4w_mean
+  - deviation_from_rolling_mean
+  - rolling_4w_max
+  - price_vs_4w_max
+  - price_momentum
+  - consecutive_up_weeks
+  - week_of_year
+  - is_lean_season
+  - weeks_in_lean_season
+  - is_short_harvest_window
+  - weeks_to_long_harvest
+  - nairobi_lag1
+  - ug_lag1
+  - national_mean_lag1
+  - nairobi_ug_spread
+  - kamis_wholesale_lag1
+  - kamis_retail_lag1
+  - kamis_ug_supply_lag1
+  - kamis_national_supply_lag1
+  - is_kamis_augmented
+  - County
+
+categorical_cols:
+  - County
+
+oof_dir: "outputs/oof/xgb_tuned"
+models_dir: "outputs/models/xgb_tuned"
+submissions_dir: "outputs/submissions/xgb_tuned"
+results_path: "outputs/results/xgb_tuned_results.json"
+log_path: "outputs/training/xgb_tuned_run.log"
+
+models:
+  lightgbm:
+    enabled: false
+
+  xgboost:
+    enabled: true
+    params:
+      objective: "reg:absoluteerror"
+      eval_metric: "mae"
+      n_estimators: 2000
+      learning_rate: 0.09057264702098186
+      max_depth: 6
+      min_child_weight: 3
+      subsample: 0.8502330592834428
+      colsample_bytree: 0.8101730944109776
+      reg_alpha: 1.6883668131763641e-06
+      reg_lambda: 4.109992948944688e-05
+      device: "cuda"
+      tree_method: "hist"
+      random_state: 42
+    early_stopping_rounds: 100
+
+  trend_extrapolation:
+    enabled: false

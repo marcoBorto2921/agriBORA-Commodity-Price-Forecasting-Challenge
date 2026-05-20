@@ -1,0 +1,19 @@
+{
+  "experiment_id": "E03b_xgb_tuned_v2",
+  "model": "xgboost",
+  "feature_version": "v2",
+  "best_cv_score": 1.271646984459467,
+  "best_params": {
+    "objective": "reg:absoluteerror",
+    "learning_rate": 0.09057264702098186,
+    "max_depth": 6,
+    "min_child_weight": 3,
+    "subsample": 0.8502330592834428,
+    "colsample_bytree": 0.8101730944109776,
+    "reg_alpha": 1.6883668131763641e-06,
+    "reg_lambda": 4.109992948944688e-05
+  },
+  "n_trials_completed": 100,
+  "direction": "minimize",
+  "train_time_seconds": 309.8
+}

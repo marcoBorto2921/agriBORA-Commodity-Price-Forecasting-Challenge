@@ -1,0 +1,90 @@
+# ============================================================
+# Baseline training config — agriBORA Commodity Price Forecasting
+# Bump experiment_id before every run
+# ============================================================
+
+experiment_id: "E02_v3_features_pruned"
+
+# --- Data ---
+task_type: "regression"
+target_col: "WholeSale"
+metric: "mae_rmse_blend"          # 0.5*MAE + 0.5*RMSE
+feature_version: "v3"
+train_path: "outputs/features/v3/train_fe.parquet"
+test_path: "outputs/features/v3/test_fe.parquet"
+
+# --- CV ---
+cv_strategy: "walk_forward"       # sorted by week, last 30% timeline
+n_folds: 5
+time_col: "Year_Week"
+random_state: 42
+
+# --- Feature columns (22 features) ---
+feature_cols:
+  - lag1_price
+  - lag2_price
+  - rolling_4w_mean
+  - deviation_from_rolling_mean
+  - rolling_4w_max
+  - price_momentum
+  - week_of_year
+  - weeks_in_lean_season
+  - is_short_harvest_window
+  - weeks_to_long_harvest
+  - nairobi_lag1
+  - ug_lag1
+  - national_mean_lag1
+  - nairobi_ug_spread
+  - County
+
+categorical_cols:
+  - County
+
+# --- Output paths ---
+oof_dir: "outputs/oof/v2"
+models_dir: "outputs/models/baseline"
+submissions_dir: "outputs/submissions/baseline"
+results_path: "outputs/results/baseline_results.json"
+log_path: "outputs/training/baseline_run.log"
+
+# --- Models to train (set enabled: false to skip) ---
+models:
+  lightgbm:
+    enabled: true
+    params:
+      objective: "regression_l1"   # MAE loss — matches 50% of metric
+      metric: "mae"
+      n_estimators: 500
+      learning_rate: 0.05
+      num_leaves: 15
+      min_child_samples: 5
+      feature_fraction: 0.8
+      bagging_fraction: 0.8
+      bagging_freq: 1
+      reg_alpha: 0.1
+      reg_lambda: 0.1
+      verbose: -1
+      random_state: 42
+    early_stopping_rounds: 50
+
+  xgboost:
+    enabled: true
+    params:
+      objective: "reg:absoluteerror"  # MAE loss
+      eval_metric: "mae"
+      n_estimators: 500
+      learning_rate: 0.05
+      max_depth: 4
+      min_child_weight: 3
+      subsample: 0.8
+      colsample_bytree: 0.8
+      reg_alpha: 0.1
+      reg_lambda: 0.1
+      device: "cuda"
+      tree_method: "hist"
+      random_state: 42
+    early_stopping_rounds: 50
+
+  trend_extrapolation:
+    enabled: true
+    # No params — uses last observed value + avg weekly slope from wk46-51

@@ -1,0 +1,27 @@
+{
+  "experiment_id": "E03b_xgb_tuned_v2",
+  "feature_version": "v2",
+  "n_train": 285,
+  "n_features": 23,
+  "naive_baseline": 2.907,
+  "models": [
+    {
+      "model": "xgboost",
+      "cv_mean": 1.639,
+      "cv_std": 1.2597,
+      "fold_scores": [
+        0.6081,
+        1.4868,
+        0.5047,
+        1.5987,
+        3.9969
+      ],
+      "train_score": 3.1188,
+      "train_time_s": 2.2,
+      "oof_path": "outputs\\oof\\xgb_tuned\\xgboost_oof.parquet"
+    }
+  ],
+  "best_model": "xgboost",
+  "best_cv": 1.639,
+  "total_time_s": 2.2
+}
