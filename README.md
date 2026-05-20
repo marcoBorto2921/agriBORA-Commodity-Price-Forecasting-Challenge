@@ -1,8 +1,12 @@
 # agriBORA Commodity Price Forecasting Challenge
 
-Retrospective solution for the [agriBORA Commodity Price Forecasting Challenge](https://zindi.africa/competitions/agribora-commodity-price-forecasting-challenge/) on Zindi (closed December 27, 2025).
+> **Unofficial Rank #1** — this solution was developed as a retrospective exercise after the competition closed (December 27, 2025), with full access to the ground truth. It is not an official competition result.
+>
+> The winning score on the official private leaderboard was **+0.801**. This solution scores **+0.820** on the same private test set — which would have ranked #1 had it been submitted during the competition.
+>
+> In Zindi competitions the private leaderboard score is the definitive result: it is computed on the full hidden test set, while the public leaderboard covers only a subset and is prone to overfitting.
 
-**Final result: Rank #1 — private LB +0.820** (previous LB#1 was +0.801).
+Retrospective solution for the [agriBORA Commodity Price Forecasting Challenge](https://zindi.africa/competitions/agribora-commodity-price-forecasting-challenge/) on Zindi (closed December 27, 2025).
 
 ---
 
