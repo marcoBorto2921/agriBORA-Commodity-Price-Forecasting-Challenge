@@ -1,0 +1,247 @@
+============================================================
+EDA START — agriBORA Commodity Price Forecasting
+============================================================
+[INFO] agriBORA train: (239, 6) | rolling wk46-51: (30, 6) | KAMIS: (21888, 15)
+
+============================================================
+1. TIME SERIES STRUCTURE
+============================================================
+[INFO] Plot saved: outputs\eda\1a_price_per_county.png
+[INFO] Observation count per target county (train only):
+[INFO]   Kiambu: 30 obs
+[WARN]   Kirinyaga: 25 obs
+[WARN]   Mombasa: 17 obs
+[INFO]   Nairobi: 56 obs
+[INFO]   Uasin-Gishu: 74 obs
+[INFO] 
+Week-over-week WholeSale % change (train only):
+[INFO]   Kiambu: mean=-0.2%, std=6.3%, max_spike=19.0%
+[INFO]   Kirinyaga: mean=0.5%, std=12.1%, max_spike=35.5%
+[INFO]   Mombasa: mean=0.7%, std=13.8%, max_spike=46.6%
+[INFO]   Nairobi: mean=-0.2%, std=6.6%, max_spike=23.1%
+[INFO]   Uasin-Gishu: mean=-0.1%, std=5.8%, max_spike=19.2%
+[INFO] 
+ACF/PACF on Nairobi (most complete county):
+[INFO] Plot saved: outputs\eda\1d_acf_pacf_nairobi.png
+[INFO]   Significant ACF lags (Nairobi): [1, 2, 3, 4, 5, 6, 7]
+
+============================================================
+2. CROSS-DATASET CALIBRATION (agriBORA vs KAMIS)
+============================================================
+[INFO] Matched (County, Year_Week) pairs agriBORA x KAMIS: 83
+[INFO] Plot saved: outputs\eda\2a_calibration_scatter.png
+[INFO] 
+agriBORA / KAMIS ratio per county:
+[WARN]   Kiambu: no overlap
+[WARN]   Kirinyaga: mean=0.984, std=0.079 (unstable)
+[WARN]   Mombasa: no overlap
+[WARN]   Nairobi: mean=0.805, std=0.090 (unstable)
+[WARN]   Uasin-Gishu: mean=0.818, std=0.103 (unstable)
+[INFO] 
+KAMIS commodity type wholesale comparison:
+[INFO]   Dry_White_Maize: mean=49.85, median=50.00, n=13865
+[INFO]   Dry_Maize_Mixed_Traditional: mean=49.87, median=47.27, n=4677
+[INFO]   Dry_Yellow_Maize: mean=62.36, median=60.00, n=1661
+
+============================================================
+3. SPARSITY & COVERAGE
+============================================================
+[INFO] Plot saved: outputs\eda\3a_agribora_heatmap.png
+[INFO] 
+KAMIS obs for target counties: 4341
+[INFO]   Kiambu: 41 weeks in KAMIS
+[INFO]   Kirinyaga: 186 weeks in KAMIS
+[INFO]   Mombasa: 48 weeks in KAMIS
+[INFO]   Nairobi: 180 weeks in KAMIS
+[INFO]   Uasin-Gishu: 156 weeks in KAMIS
+[INFO] 
+KAMIS distinct markets per target county:
+[INFO]   Kiambu: 5 markets
+[INFO]   Kirinyaga: 5 markets
+[INFO]   Mombasa: 4 markets
+[INFO]   Nairobi: 5 markets
+[INFO]   Uasin-Gishu: 6 markets
+
+============================================================
+4. SEASONALITY & HARVEST CALENDAR
+============================================================
+[INFO] Plot saved: outputs\eda\4a_seasonality_by_county.png
+[INFO] 
+Seasonality — Uasin-Gishu (producer) vs Nairobi (consumer):
+[INFO]   Uasin-Gishu: peak wk=26, trough wk=25, range=37.5 KES/kg
+[INFO]   Nairobi: peak wk=11, trough wk=21, range=28.9 KES/kg
+
+============================================================
+5. CROSS-COUNTY DYNAMICS
+============================================================
+[INFO] County pivot shape (weeks × counties): (93, 5)
+[INFO] Non-null counts per county: {'Kiambu': 36, 'Kirinyaga': 31, 'Mombasa': 23, 'Nairobi': 62, 'Uasin-Gishu': 80}
+[INFO] 
+Correlation matrix (WholeSale, weekly aligned):
+County       Kiambu  Kirinyaga  Mombasa  Nairobi  Uasin-Gishu
+County                                                       
+Kiambu        1.000      0.808    0.904    0.822        0.831
+Kirinyaga     0.808      1.000    0.863    0.888        0.846
+Mombasa       0.904      0.863    1.000    0.960        0.953
+Nairobi       0.822      0.888    0.960    1.000        0.922
+Uasin-Gishu   0.831      0.846    0.953    0.922        1.000
+[INFO] Mombasa max correlation: 0.960
+[INFO] Plot saved: outputs\eda\5a_cross_county_corr.png
+[INFO] 
+Nairobi - Uasin-Gishu spread: mean=1.83, std=1.79 KES/kg
+[INFO] Spread relatively stable — can model spread directly
+[INFO] 
+Granger causality: Uasin-Gishu -> Nairobi (lags 1-2):
+[INFO]   lag 1: p=0.3357 (not significant)
+[INFO]   lag 2: p=0.6451 (not significant)
+[INFO] 
+Mombasa R² vs each county:
+[INFO]   vs Kiambu: R²=0.818
+[INFO]   vs Kirinyaga: R²=0.744
+[INFO]   vs Nairobi: R²=0.921
+[INFO]   vs Uasin-Gishu: R²=0.908
+
+============================================================
+6. KAMIS AS LEADING INDICATOR
+============================================================
+[WARN] KAMIS SupplyVolume nulls: 1428/3346 (42.7%)
+[INFO] 
+Cross-correlation KAMIS SupplyVolume vs agriBORA WholeSale (lags 0-4):
+[INFO]   Kiambu: corrs=[np.float64(0.31), np.float64(0.13), np.float64(0.1), np.float64(0.2), np.float64(0.16)], best_lag=0
+[INFO]   Kirinyaga: corrs=[np.float64(-0.31), np.float64(-0.32), np.float64(-0.22), np.float64(-0.17), np.float64(-0.07)], best_lag=1
+[INFO]   Mombasa: corrs=[np.float64(-0.25), np.float64(-0.22), np.float64(0.04), np.float64(-0.49), np.float64(-0.03)], best_lag=3
+[INFO]   Nairobi: corrs=[np.float64(0.13), np.float64(0.18), np.float64(0.14), np.float64(0.3), np.float64(0.22)], best_lag=3
+[INFO]   Uasin-Gishu: corrs=[np.float64(-0.04), np.float64(0.27), np.float64(0.07), np.float64(-0.17), np.float64(-0.43)], best_lag=4
+[INFO] 
+KAMIS Retail vs agriBORA WholeSale correlation per county:
+[INFO]   Kiambu: r=0.209
+[INFO]   Kirinyaga: r=-0.112
+[INFO]   Mombasa: r=0.279
+[INFO]   Nairobi: r=0.472
+[INFO]   Uasin-Gishu: r=0.110
+
+============================================================
+7. BASELINE BENCHMARK
+============================================================
+[INFO] 
+Naive last-value (predict wk N from wk N-1):
+[INFO]   Kiambu: score=1.643 (MAE=1.444, RMSE=1.842)
+[INFO]   Kirinyaga: score=3.164 (MAE=2.446, RMSE=3.881)
+[INFO]   Mombasa: score=1.757 (MAE=1.223, RMSE=2.291)
+[INFO]   Nairobi: score=1.508 (MAE=1.216, RMSE=1.800)
+[INFO]   Uasin-Gishu: score=2.547 (MAE=1.956, RMSE=3.137)
+[INFO]   MEAN across counties: 2.124
+[INFO] 
+2-week-ahead naive (predict wk N+2 from wk N) — actual submission horizon:
+[INFO]   Kiambu: score=3.253
+[INFO]   Kirinyaga: score=2.738
+[INFO]   Mombasa: score=2.456
+[INFO]   Nairobi: score=2.427
+[INFO]   Uasin-Gishu: score=3.661
+[INFO]   MEAN: 2.907
+[INFO] 
+4-week rolling mean forecast:
+[INFO]   Kiambu: score=3.888 (last-4-mean=42.22)
+[INFO]   Kirinyaga: score=1.668 (last-4-mean=37.22)
+[INFO]   Mombasa: score=5.521 (last-4-mean=41.63)
+[INFO]   Nairobi: score=5.104 (last-4-mean=41.88)
+[INFO]   Uasin-Gishu: score=5.702 (last-4-mean=38.70)
+[INFO]   MEAN: 4.377
+[INFO] Plot saved: outputs\eda\7a_baseline_scores.png
+
+============================================================
+8. ADF STATIONARITY TEST
+============================================================
+[INFO] ADF test: H0 = unit root (non-stationary). p < 0.05 = stationary.
+[WARN]   Kiambu: levels p=0.1082 (NON-STATIONARY) | diff p=0.0000 (stationary)
+[WARN]   Kirinyaga: levels p=0.1187 (NON-STATIONARY) | diff p=0.2757 (NON-STATIONARY)
+[WARN]   Mombasa: levels p=0.1599 (NON-STATIONARY) | diff p=0.5195 (NON-STATIONARY)
+[WARN]   Nairobi: levels p=0.1139 (NON-STATIONARY) | diff p=0.0000 (stationary)
+[WARN]   Uasin-Gishu: levels p=0.1713 (NON-STATIONARY) | diff p=0.0000 (stationary)
+
+============================================================
+9. ROLLING VOLATILITY (4-week window)
+============================================================
+[INFO]   Kiambu: max rolling std=4.71 at 2024-03-04
+[INFO]   Kirinyaga: max rolling std=7.22 at 2024-03-04
+[INFO]   Mombasa: max rolling std=9.36 at 2025-08-04
+[INFO]   Nairobi: max rolling std=5.39 at 2024-11-18
+[INFO]   Uasin-Gishu: max rolling std=4.26 at 2025-08-18
+[INFO] Plot saved: outputs\eda\9a_rolling_volatility.png
+
+============================================================
+10. WoW PRICE CHANGE DISTRIBUTION (differenced series)
+============================================================
+[INFO]   Kiambu: mean=-0.06, std=2.38, skew=-0.58, p5/p95=-4.17/2.95
+[INFO]   Kirinyaga: mean=-0.07, std=4.56, skew=0.17, p5/p95=-5.87/7.58
+[WARN]   Mombasa: mean=-0.05, std=4.26, skew=2.10, p5/p95=-4.97/4.97
+[INFO]   Nairobi: mean=-0.11, std=2.39, skew=0.51, p5/p95=-3.76/3.68
+[INFO]   Uasin-Gishu: mean=-0.06, std=2.36, skew=0.09, p5/p95=-4.37/3.30
+[INFO] Plot saved: outputs\eda\10a_wow_distribution.png
+
+============================================================
+11. AR(1) RESIDUAL DIAGNOSTICS + LJUNG-BOX
+============================================================
+[INFO] Fitting AR(1): price_t = c + b*price_t-1 + e_t
+[INFO]   Kiambu: AR(1) b=0.725, c=11.31, resid_std=2.15 | Ljung-Box(lag=5) p=0.2037 -> white noise
+[INFO]   Kirinyaga: AR(1) b=0.604, c=15.85, resid_std=3.96 | Ljung-Box(lag=5) p=0.7708 -> white noise
+[INFO]   Mombasa: AR(1) b=0.613, c=14.10, resid_std=3.69 | Ljung-Box(lag=5) p=0.7278 -> white noise
+[INFO]   Nairobi: AR(1) b=0.861, c=5.44, resid_std=2.25 | Ljung-Box(lag=5) p=0.7451 -> white noise
+[INFO]   Uasin-Gishu: AR(1) b=0.911, c=3.46, resid_std=2.28 | Ljung-Box(lag=5) p=0.3215 -> white noise
+[INFO] 
+Cross-county AR(1) residual correlations:
+[INFO]   Kiambu vs Kirinyaga: r=-0.368
+[INFO]   Kiambu vs Mombasa: r=0.037
+[INFO]   Kiambu vs Nairobi: r=0.003
+[INFO]   Kiambu vs Uasin-Gishu: r=0.046
+[INFO]   Kirinyaga vs Mombasa: r=-0.187
+[INFO]   Kirinyaga vs Nairobi: r=-0.201
+[INFO]   Kirinyaga vs Uasin-Gishu: r=-0.026
+[INFO]   Mombasa vs Nairobi: r=-0.325
+[INFO]   Mombasa vs Uasin-Gishu: r=-0.038
+[INFO]   Nairobi vs Uasin-Gishu: r=0.090
+
+============================================================
+12. KAMIS COUNTY NAME AUDIT
+============================================================
+[INFO] agriBORA counties (16): ['Bungoma', 'Busia', 'Embu', 'Kajiado', 'Kakamega', 'Kiambu', 'Kirinyaga', 'Kisumu', 'Machakos', 'Meru', 'Mombasa', 'Nairobi', 'Nakuru', 'Nyeri', 'Trans-Nzoia', 'Uasin-Gishu']
+[INFO] KAMIS counties (47): ['Baringo', 'Bomet', 'Bungoma', 'Busia', 'Elgeyo-Marakwet', 'Embu', 'Garissa', 'Homa-Bay', 'Isiolo', 'Kajiado', 'Kakamega', 'Kericho', 'Kiambu', 'Kilifi', 'Kirinyaga', 'Kisii', 'Kisumu', 'Kitui', 'Kwale', 'Laikipia', 'Lamu', 'Machakos', 'Makueni', 'Mandera', 'Marsabit', 'Meru', 'Migori', 'Mombasa', 'Muranga', 'Nairobi', 'Nakuru', 'Nandi', 'Narok', 'Nyamira', 'Nyandarua', 'Nyeri', 'Samburu', 'Siaya', 'Taita-Taveta', 'Tana-River', 'Tharaka-Nithi', 'Trans-Nzoia', 'Turkana', 'Uasin-Gishu', 'Vihiga', 'Wajir', 'West-Pokot']
+[INFO] Exact matches: ['Bungoma', 'Busia', 'Embu', 'Kajiado', 'Kakamega', 'Kiambu', 'Kirinyaga', 'Kisumu', 'Machakos', 'Meru', 'Mombasa', 'Nairobi', 'Nakuru', 'Nyeri', 'Trans-Nzoia', 'Uasin-Gishu']
+[INFO] agriBORA counties NOT in KAMIS: []
+[INFO] 
+Fuzzy search for unmatched counties in KAMIS:
+[INFO] 
+KAMIS Dry_White_Maize rows per target county (exact match):
+[INFO]   Kiambu: 67 rows
+[INFO]   Kirinyaga: 1159 rows
+[INFO]   Mombasa: 72 rows
+[INFO]   Nairobi: 1406 rows
+[INFO]   Uasin-Gishu: 642 rows
+
+============================================================
+13. KAMIS SUPPLY VOLUME NULL PATTERN
+============================================================
+[INFO] SupplyVolume null rate per target county (KAMIS Dry_White_Maize):
+[INFO]   Kiambu: 9.0% nulls (6/67)
+[WARN]   Kirinyaga: 10.5% nulls (122/1159)
+[WARN]   Mombasa: 13.9% nulls (10/72)
+[CRITICAL]   Nairobi: 91.7% nulls (1289/1406)
+[INFO]   Uasin-Gishu: 0.2% nulls (1/642)
+[INFO] Plot saved: outputs\eda\13a_supply_null_heatmap.png
+[INFO] 
+National weekly supply (sum across counties): mean=52955, std=77390, weeks with data=189/191
+
+============================================================
+14. LAST-KNOWN-VALUE RECENCY BEFORE FORECAST WINDOW (wk52)
+============================================================
+[INFO] Forecast window starts: 2025-12-22 (approx wk52 2025)
+[INFO] Checking most recent obs per county before forecast start:
+[INFO]   Kiambu: last obs=2025-12-15, price=44.44, 1.0 weeks before forecast
+[INFO]   Kirinyaga: last obs=2025-12-15, price=46.67, 1.0 weeks before forecast
+[INFO]   Mombasa: last obs=2025-12-15, price=42.22, 1.0 weeks before forecast
+[INFO]   Nairobi: last obs=2025-12-15, price=42.78, 1.0 weeks before forecast
+[INFO]   Uasin-Gishu: last obs=2025-12-15, price=41.67, 1.0 weeks before forecast
+
+============================================================
+EDA DONE — check outputs/eda/ for plots
+============================================================
