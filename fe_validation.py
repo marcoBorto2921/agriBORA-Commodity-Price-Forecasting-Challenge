@@ -19,8 +19,6 @@ warnings.filterwarnings("ignore")
 TRAIN_PATH = "outputs/features/v2/train_fe.parquet"
 TEST_PATH = "outputs/features/v2/test_fe.parquet"
 TARGET_COL = "WholeSale"
-TASK = "regression"
-METRIC = "0.5*MAE + 0.5*RMSE"
 RANDOM_STATE = 42
 
 # Number of walk-forward validation splits
@@ -33,20 +31,32 @@ OUTPUT_DIR = Path("outputs/fe_validation")
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 FEATURE_COLS = [
-    "lag1_price", "lag2_price",
-    "rolling_4w_mean", "deviation_from_rolling_mean",
-    "rolling_4w_max", "price_vs_4w_max",
-    "price_momentum", "consecutive_up_weeks",
-    "week_of_year", "is_lean_season", "weeks_in_lean_season",
-    "is_short_harvest_window", "weeks_to_long_harvest",
-    "nairobi_lag1", "ug_lag1", "national_mean_lag1", "nairobi_ug_spread",
-    "kamis_wholesale_lag1", "kamis_retail_lag1",
-    "kamis_ug_supply_lag1", "kamis_national_supply_lag1",
+    "lag1_price",
+    "lag2_price",
+    "rolling_4w_mean",
+    "deviation_from_rolling_mean",
+    "rolling_4w_max",
+    "price_vs_4w_max",
+    "price_momentum",
+    "consecutive_up_weeks",
+    "week_of_year",
+    "is_lean_season",
+    "weeks_in_lean_season",
+    "is_short_harvest_window",
+    "weeks_to_long_harvest",
+    "nairobi_lag1",
+    "ug_lag1",
+    "national_mean_lag1",
+    "nairobi_ug_spread",
+    "kamis_wholesale_lag1",
+    "kamis_retail_lag1",
+    "kamis_ug_supply_lag1",
+    "kamis_national_supply_lag1",
     "is_kamis_augmented",
 ]
 
 LGBM_PARAMS = {
-    "objective": "regression_l1",   # MAE-optimal base (metric blends MAE+RMSE)
+    "objective": "regression_l1",  # MAE-optimal base (metric blends MAE+RMSE)
     "n_estimators": 300,
     "learning_rate": 0.05,
     "num_leaves": 15,
@@ -89,14 +99,19 @@ def load_data() -> tuple[pd.DataFrame, pd.DataFrame]:
     test["County"] = test["County"].astype("category")
 
     _flag("INFO", f"Train: {train.shape} | Test: {test.shape}")
-    _flag("INFO", f"Year_Week range: {train['Year_Week'].min()} to {train['Year_Week'].max()}")
+    _flag(
+        "INFO",
+        f"Year_Week range: {train['Year_Week'].min()} to {train['Year_Week'].max()}",
+    )
     return train, test
 
 
 # ── Check 1: Walk-forward CV (predictive signal) ──────────────────────────────
 
 
-def walk_forward_cv(train: pd.DataFrame) -> tuple[float, float, list[float], np.ndarray, np.ndarray]:
+def walk_forward_cv(
+    train: pd.DataFrame,
+) -> tuple[float, float, list[float], np.ndarray, np.ndarray]:
     """
     Walk-forward CV: train on all weeks before cutoff, validate on next 2 weeks.
     Uses N_FOLDS equally spaced cutoffs in the last ~30% of the timeline.
@@ -116,8 +131,9 @@ def walk_forward_cv(train: pd.DataFrame) -> tuple[float, float, list[float], np.
     oof_actuals_list = []
 
     for fold_i, cutoff in enumerate(cutoff_weeks):
-        val_weeks = sorted_weeks[sorted_weeks.index(cutoff) + 1:
-                                  sorted_weeks.index(cutoff) + 3]  # next 2 weeks
+        val_weeks = sorted_weeks[
+            sorted_weeks.index(cutoff) + 1 : sorted_weeks.index(cutoff) + 3
+        ]  # next 2 weeks
         if not val_weeks:
             continue
 
@@ -141,8 +157,11 @@ def walk_forward_cv(train: pd.DataFrame) -> tuple[float, float, list[float], np.
         oof_preds_list.extend(preds)
         oof_actuals_list.extend(y_val.values)
 
-        _flag("INFO", f"  Fold {fold_i+1}: cutoff={cutoff}, val_weeks={val_weeks}, "
-              f"n_val={len(y_val)}, score={score:.4f}")
+        _flag(
+            "INFO",
+            f"  Fold {fold_i + 1}: cutoff={cutoff}, val_weeks={val_weeks}, "
+            f"n_val={len(y_val)}, score={score:.4f}",
+        )
 
     mean_score = float(np.mean(fold_scores)) if fold_scores else float("nan")
     std_score = float(np.std(fold_scores)) if fold_scores else float("nan")
@@ -166,7 +185,7 @@ def check_leakage(train: pd.DataFrame, cv_score: float) -> tuple[float, str]:
     train_preds = model.predict(train[feat_cols])
     train_score = competition_score(train[TARGET_COL].values, train_preds)
 
-    gap = cv_score - train_score   # positive = CV worse than train (expected)
+    gap = cv_score - train_score  # positive = CV worse than train (expected)
     gap_pct = (cv_score - train_score) / cv_score * 100 if cv_score > 0 else 0
 
     if gap_pct > 50:
@@ -176,21 +195,25 @@ def check_leakage(train: pd.DataFrame, cv_score: float) -> tuple[float, str]:
     else:
         verdict = "PASS"
 
-    _flag(verdict, f"  Train score={train_score:.4f}, CV score={cv_score:.4f}, "
-          f"gap={gap:.4f} ({gap_pct:.1f}%) -> {verdict}")
+    _flag(
+        verdict,
+        f"  Train score={train_score:.4f}, CV score={cv_score:.4f}, "
+        f"gap={gap:.4f} ({gap_pct:.1f}%) -> {verdict}",
+    )
     return train_score, verdict
 
 
 # ── Check 3: Adversarial validation ──────────────────────────────────────────
 
 
-def adversarial_validation(train: pd.DataFrame, test: pd.DataFrame) -> tuple[float, str]:
+def adversarial_validation(
+    train: pd.DataFrame, test: pd.DataFrame
+) -> tuple[float, str]:
     """
     Binary classifier: can LightGBM distinguish train from test?
     AUC ~ 0.5 = indistinguishable (PASS), AUC > 0.85 = distribution shift (CRITICAL).
     Note: test has only 10 rows — result is directional only.
     """
-    from sklearn.model_selection import StratifiedKFold
     from sklearn.metrics import roc_auc_score
 
     feat_cols = get_feature_cols(train)
@@ -216,8 +239,9 @@ def adversarial_validation(train: pd.DataFrame, test: pd.DataFrame) -> tuple[flo
         return float("nan"), "SKIP"
 
     # Single stratified fold (test is tiny)
-    model = lgb.LGBMClassifier(n_estimators=100, num_leaves=8, random_state=RANDOM_STATE,
-                                verbose=-1, n_jobs=-1)
+    model = lgb.LGBMClassifier(
+        n_estimators=100, num_leaves=8, random_state=RANDOM_STATE, verbose=-1, n_jobs=-1
+    )
     model.fit(X, y)
     proba = model.predict_proba(X)[:, 1]
 
@@ -235,8 +259,10 @@ def adversarial_validation(train: pd.DataFrame, test: pd.DataFrame) -> tuple[flo
     else:
         verdict = "PASS"
 
-    _flag(verdict if verdict != "SKIP" else "INFO",
-          f"  Adversarial AUC={auc:.4f} (test n={len(te)}) -> {verdict}")
+    _flag(
+        verdict if verdict != "SKIP" else "INFO",
+        f"  Adversarial AUC={auc:.4f} (test n={len(te)}) -> {verdict}",
+    )
     _flag("INFO", "  Note: test=10 rows only — AUC directional, not conclusive.")
     return auc, verdict
 
@@ -250,13 +276,17 @@ def feature_importance_check(train: pd.DataFrame) -> tuple[list[str], int]:
     model = lgb.LGBMRegressor(**LGBM_PARAMS)
     model.fit(train[feat_cols], train[TARGET_COL])
 
-    importance = pd.Series(model.feature_importances_, index=feat_cols).sort_values(ascending=False)
+    importance = pd.Series(model.feature_importances_, index=feat_cols).sort_values(
+        ascending=False
+    )
     dead = (importance == 0).sum()
     top5 = importance.head(5).index.tolist()
 
     _flag("INFO", f"  Top 5 features: {top5}")
-    _flag("INFO" if dead == 0 else "WARN",
-          f"  Dead features (importance=0): {dead}/{len(feat_cols)}")
+    _flag(
+        "INFO" if dead == 0 else "WARN",
+        f"  Dead features (importance=0): {dead}/{len(feat_cols)}",
+    )
 
     if dead > 0:
         dead_list = importance[importance == 0].index.tolist()
@@ -296,13 +326,21 @@ def main() -> None:
         _flag("CRITICAL", "CV failed — no valid folds")
     elif cv_mean >= NAIVE_BASELINE:
         signal_verdict = "WARN"
-        _flag("WARN", f"CV score {cv_mean:.4f} >= naive baseline {NAIVE_BASELINE:.4f} — not beating baseline yet")
+        _flag(
+            "WARN",
+            f"CV score {cv_mean:.4f} >= naive baseline {NAIVE_BASELINE:.4f} — not beating baseline yet",
+        )
     elif cv_mean < NAIVE_BASELINE * 0.5:
         signal_verdict = "PASS"
-        _flag("INFO", f"PASS — CV score {cv_mean:.4f} well below baseline {NAIVE_BASELINE:.4f}")
+        _flag(
+            "INFO",
+            f"PASS — CV score {cv_mean:.4f} well below baseline {NAIVE_BASELINE:.4f}",
+        )
     else:
         signal_verdict = "PASS"
-        _flag("INFO", f"PASS — CV score {cv_mean:.4f} beats baseline {NAIVE_BASELINE:.4f}")
+        _flag(
+            "INFO", f"PASS — CV score {cv_mean:.4f} beats baseline {NAIVE_BASELINE:.4f}"
+        )
 
     # ── Check 2: Leakage ──
     print("\n--- Check 2: Leakage detection ---")
@@ -327,8 +365,11 @@ def main() -> None:
     print("\n" + "=" * 60)
     print("OVERALL VERDICT")
     print("=" * 60)
-    criticals = [v for v in [signal_verdict, leakage_verdict, adv_verdict, importance_verdict]
-                 if v == "CRITICAL"]
+    criticals = [
+        v
+        for v in [signal_verdict, leakage_verdict, adv_verdict, importance_verdict]
+        if v == "CRITICAL"
+    ]
     overall = "STOP — fix criticals" if criticals else "GO"
     _flag("INFO" if not criticals else "CRITICAL", f"Overall: {overall}")
     _flag("INFO", f"  Check 1 (signal):      {signal_verdict}")
@@ -379,13 +420,21 @@ def main() -> None:
 ## Issues Requiring Attention
 """)
         if signal_verdict != "PASS":
-            f.write(f"- [Check 1] CV score {cv_mean:.4f} vs baseline {NAIVE_BASELINE:.4f} — model not yet beating naive\n")
+            f.write(
+                f"- [Check 1] CV score {cv_mean:.4f} vs baseline {NAIVE_BASELINE:.4f} — model not yet beating naive\n"
+            )
         if leakage_verdict == "CRITICAL":
-            f.write(f"- [Check 2] Leakage suspect — train score {train_score:.4f} much lower than CV {cv_mean:.4f}\n")
+            f.write(
+                f"- [Check 2] Leakage suspect — train score {train_score:.4f} much lower than CV {cv_mean:.4f}\n"
+            )
         if adv_verdict == "CRITICAL":
-            f.write(f"- [Check 3] Adversarial AUC {adv_auc:.4f} — distribution shift between train and test\n")
+            f.write(
+                f"- [Check 3] Adversarial AUC {adv_auc:.4f} — distribution shift between train and test\n"
+            )
         if importance_verdict in ("WARN", "CRITICAL"):
-            f.write(f"- [Check 4] {n_dead}/{n_total_feats} features have zero importance\n")
+            f.write(
+                f"- [Check 4] {n_dead}/{n_total_feats} features have zero importance\n"
+            )
         if not criticals and signal_verdict == "PASS":
             f.write("- None.\n")
 

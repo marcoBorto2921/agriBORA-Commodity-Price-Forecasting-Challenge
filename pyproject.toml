@@ -1,0 +1,3 @@
+[tool.deptry]
+# pyarrow is an implicit dependency required by pandas for parquet I/O
+per_rule_ignores = {DEP002 = ["pyarrow"]}

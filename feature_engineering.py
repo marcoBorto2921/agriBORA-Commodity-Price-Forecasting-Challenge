@@ -68,7 +68,10 @@ def load_raw() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     kamis = pd.read_csv(KAMIS_PATH, encoding="utf-8")
     kamis["Date"] = pd.to_datetime(kamis["Date"])
 
-    _flag("INFO", f"Raw — agriBORA train: {train.shape}, rolling: {rolling.shape}, KAMIS: {kamis.shape}")
+    _flag(
+        "INFO",
+        f"Raw — agriBORA train: {train.shape}, rolling: {rolling.shape}, KAMIS: {kamis.shape}",
+    )
     return train, rolling, kamis
 
 
@@ -93,14 +96,19 @@ def build_agribora_panel(train: pd.DataFrame, rolling: pd.DataFrame) -> pd.DataF
         .reset_index(drop=True)
     )
 
-    _flag("INFO", f"agriBORA panel: {panel.shape} rows ({panel['Year_Week'].nunique()} weeks × 5 counties approx)")
+    _flag(
+        "INFO",
+        f"agriBORA panel: {panel.shape} rows ({panel['Year_Week'].nunique()} weeks × 5 counties approx)",
+    )
     return panel
 
 
 # ── Step 2: KAMIS augmentation for sparse counties ────────────────────────────
 
 
-def build_kamis_augmentation(kamis: pd.DataFrame, agribora_panel: pd.DataFrame) -> pd.DataFrame:
+def build_kamis_augmentation(
+    kamis: pd.DataFrame, agribora_panel: pd.DataFrame
+) -> pd.DataFrame:
     """
     For Kiambu and Mombasa (most sparse), create synthetic agriBORA-scale rows
     from KAMIS Dry_White_Maize using per-county calibration ratios.
@@ -129,7 +137,9 @@ def build_kamis_augmentation(kamis: pd.DataFrame, agribora_panel: pd.DataFrame) 
     existing = set(zip(agribora_panel["County"], agribora_panel["Year_Week"]))
     new_rows = kamis_county[
         ~kamis_county.apply(lambda r: (r["County"], r["Year_Week"]) in existing, axis=1)
-    ][["County", "Year_Week", "WeekofYear", "WholeSale", "Date", "is_kamis_augmented"]].copy()
+    ][
+        ["County", "Year_Week", "WeekofYear", "WholeSale", "Date", "is_kamis_augmented"]
+    ].copy()
 
     _flag("INFO", f"KAMIS augmentation: added {len(new_rows)} rows for Kiambu/Mombasa")
 
@@ -177,9 +187,12 @@ def build_kamis_features(kamis: pd.DataFrame) -> pd.DataFrame:
         .rename(columns={"SupplyVolume": "kamis_national_supply"})
     )
 
-    _flag("INFO", f"KAMIS features: {len(kamis_agg)} county-week rows, "
-          f"UG supply {ug_supply['kamis_ug_supply'].gt(0).sum()} non-zero weeks, "
-          f"national supply {national_supply['kamis_national_supply'].gt(0).sum()} non-zero weeks")
+    _flag(
+        "INFO",
+        f"KAMIS features: {len(kamis_agg)} county-week rows, "
+        f"UG supply {ug_supply['kamis_ug_supply'].gt(0).sum()} non-zero weeks, "
+        f"national supply {national_supply['kamis_national_supply'].gt(0).sum()} non-zero weeks",
+    )
 
     return kamis_agg, ug_supply, national_supply
 
@@ -239,7 +252,9 @@ def add_calendar_features(panel: pd.DataFrame) -> pd.DataFrame:
     panel = panel.copy()
     panel["week_of_year"] = panel["WeekofYear"].astype(int)
     panel["is_lean_season"] = panel["week_of_year"].isin(LEAN_SEASON_WEEKS).astype(int)
-    panel["is_short_harvest_window"] = panel["week_of_year"].isin(SHORT_HARVEST_WEEKS).astype(int)
+    panel["is_short_harvest_window"] = (
+        panel["week_of_year"].isin(SHORT_HARVEST_WEEKS).astype(int)
+    )
     panel["weeks_to_long_harvest"] = panel["week_of_year"].apply(_weeks_to_long_harvest)
 
     # Weeks already into lean season (0 outside lean season)
@@ -281,11 +296,16 @@ def add_cross_county_features(panel: pd.DataFrame) -> pd.DataFrame:
 
     # Nairobi-UG spread
     if "nairobi_lag1" in lag1_pivot.columns and "ug_lag1" in lag1_pivot.columns:
-        lag1_pivot["nairobi_ug_spread"] = lag1_pivot["nairobi_lag1"] - lag1_pivot["ug_lag1"]
+        lag1_pivot["nairobi_ug_spread"] = (
+            lag1_pivot["nairobi_lag1"] - lag1_pivot["ug_lag1"]
+        )
 
     # Drop individual county columns (keep only cross-county features)
-    drop_cols = [c for c in TARGET_COUNTIES if c in lag1_pivot.columns
-                 and c not in ("nairobi_lag1", "ug_lag1")]
+    drop_cols = [
+        c
+        for c in TARGET_COUNTIES
+        if c in lag1_pivot.columns and c not in ("nairobi_lag1", "ug_lag1")
+    ]
     lag1_pivot = lag1_pivot.drop(columns=drop_cols, errors="ignore")
 
     panel = panel.merge(lag1_pivot, on="Year_Week", how="left")
@@ -309,7 +329,9 @@ def merge_kamis_features(
         k = kamis_agg[kamis_agg["County"] == county].sort_values("Year_Week").copy()
         k["kamis_wholesale_lag1"] = k["kamis_wholesale"].shift(1)
         k["kamis_retail_lag1"] = k["kamis_retail"].shift(1)
-        kamis_lagged_parts.append(k[["County", "Year_Week", "kamis_wholesale_lag1", "kamis_retail_lag1"]])
+        kamis_lagged_parts.append(
+            k[["County", "Year_Week", "kamis_wholesale_lag1", "kamis_retail_lag1"]]
+        )
 
     kamis_county_lag = pd.concat(kamis_lagged_parts, ignore_index=True)
 
@@ -319,8 +341,12 @@ def merge_kamis_features(
     ug_supply_lag = ug_supply_lag[["Year_Week", "kamis_ug_supply_lag1"]]
 
     national_supply_lag = national_supply.sort_values("Year_Week").copy()
-    national_supply_lag["kamis_national_supply_lag1"] = national_supply_lag["kamis_national_supply"].shift(1)
-    national_supply_lag = national_supply_lag[["Year_Week", "kamis_national_supply_lag1"]]
+    national_supply_lag["kamis_national_supply_lag1"] = national_supply_lag[
+        "kamis_national_supply"
+    ].shift(1)
+    national_supply_lag = national_supply_lag[
+        ["Year_Week", "kamis_national_supply_lag1"]
+    ]
 
     panel = panel.merge(kamis_county_lag, on=["County", "Year_Week"], how="left")
     panel = panel.merge(ug_supply_lag, on="Year_Week", how="left")
@@ -368,10 +394,14 @@ def build_test_rows(panel: pd.DataFrame) -> pd.DataFrame:
             "lag1_price": lag1,
             "lag2_price": lag2,
             "rolling_4w_mean": roll_mean,
-            "deviation_from_rolling_mean": lag1 - roll_mean if pd.notna(lag1) else np.nan,
+            "deviation_from_rolling_mean": lag1 - roll_mean
+            if pd.notna(lag1)
+            else np.nan,
             "rolling_4w_max": roll_max,
             "price_vs_4w_max": lag1 - roll_max if pd.notna(lag1) else np.nan,
-            "price_momentum": lag1 - lag2 if pd.notna(lag1) and pd.notna(lag2) else np.nan,
+            "price_momentum": lag1 - lag2
+            if pd.notna(lag1) and pd.notna(lag2)
+            else np.nan,
             "consecutive_up_weeks": consec,
         }
         test_rows.append(wk52)
@@ -410,7 +440,9 @@ def add_calendar_and_cross_county_to_test(
 
     # Cross-county features for wk52: use wk51 prices (lag1 of each county in wk52)
     wk51_prices = {
-        county: panel[panel["County"] == county].sort_values("Year_Week")["WholeSale"].iloc[-1]
+        county: panel[panel["County"] == county]
+        .sort_values("Year_Week")["WholeSale"]
+        .iloc[-1]
         for county in TARGET_COUNTIES
     }
     national_mean = np.mean(list(wk51_prices.values()))
@@ -420,14 +452,21 @@ def add_calendar_and_cross_county_to_test(
     test.loc[test["Year_Week"] == "2025-52", "nairobi_lag1"] = nairobi_lag1
     test.loc[test["Year_Week"] == "2025-52", "ug_lag1"] = ug_lag1
     test.loc[test["Year_Week"] == "2025-52", "national_mean_lag1"] = national_mean
-    test.loc[test["Year_Week"] == "2025-52", "nairobi_ug_spread"] = nairobi_lag1 - ug_lag1
+    test.loc[test["Year_Week"] == "2025-52", "nairobi_ug_spread"] = (
+        nairobi_lag1 - ug_lag1
+    )
 
     # wk1: lag1 for cross-county = wk52 prediction (unknown) → NaN, filled at inference
     for col in ["nairobi_lag1", "ug_lag1", "national_mean_lag1", "nairobi_ug_spread"]:
         test.loc[test["Year_Week"] == "2026-01", col] = np.nan
 
     # KAMIS features: KAMIS ends Jul 2025 — all null for wk52/wk1
-    for col in ["kamis_wholesale_lag1", "kamis_retail_lag1", "kamis_ug_supply_lag1", "kamis_national_supply_lag1"]:
+    for col in [
+        "kamis_wholesale_lag1",
+        "kamis_retail_lag1",
+        "kamis_ug_supply_lag1",
+        "kamis_national_supply_lag1",
+    ]:
         test[col] = np.nan
 
     return test
@@ -500,7 +539,9 @@ def main() -> None:
 
     # Build test rows
     test = build_test_rows(panel)
-    test = add_calendar_and_cross_county_to_test(test, panel, kamis_agg, ug_supply, national_supply)
+    test = add_calendar_and_cross_county_to_test(
+        test, panel, kamis_agg, ug_supply, national_supply
+    )
 
     # ── Train: all rows with non-null target (WholeSale) and valid lag1 ──
     train_fe = panel[panel["WholeSale"].notna() & panel["lag1_price"].notna()].copy()
@@ -523,7 +564,9 @@ def main() -> None:
     print("\nTraining rows per county:")
     for county in TARGET_COUNTIES:
         n = len(train_fe[train_fe["County"] == county])
-        aug = (train_fe[(train_fe["County"] == county) & (train_fe["is_kamis_augmented"] == 1)].shape[0])
+        aug = train_fe[
+            (train_fe["County"] == county) & (train_fe["is_kamis_augmented"] == 1)
+        ].shape[0]
         _flag("INFO", f"  {county}: {n} rows ({aug} KAMIS-augmented)")
 
     # Save

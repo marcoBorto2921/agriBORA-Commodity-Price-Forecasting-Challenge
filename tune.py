@@ -258,13 +258,13 @@ def main() -> None:
         timeout,
     )
     t0 = time.time()
-    study.optimize(objective, n_trials=n_trials, timeout=timeout, show_progress_bar=True)
+    study.optimize(
+        objective, n_trials=n_trials, timeout=timeout, show_progress_bar=True
+    )
     elapsed = time.time() - t0
 
     best = study.best_trial
-    log.info(
-        "Best CV: %.6f (trial %d) | Time: %.0fs", best.value, best.number, elapsed
-    )
+    log.info("Best CV: %.6f (trial %d) | Time: %.0fs", best.value, best.number, elapsed)
     log.info("Best params: %s", best.params)
 
     results_dir = Path("outputs/results")
@@ -292,7 +292,9 @@ def main() -> None:
         "best_params": best.params,
         "n_trials": len(study.trials),
         "train_time_seconds": round(elapsed, 1),
-        "timestamp": __import__("datetime").datetime.now().isoformat(timespec="seconds"),
+        "timestamp": __import__("datetime")
+        .datetime.now()
+        .isoformat(timespec="seconds"),
     }
     print("EXPERIMENT_SUMMARY:" + json.dumps(summary))
 

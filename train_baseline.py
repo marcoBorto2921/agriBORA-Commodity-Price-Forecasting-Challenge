@@ -13,7 +13,6 @@ from __future__ import annotations
 import argparse
 import json
 import logging
-import os
 import pickle
 import time
 import warnings
@@ -42,6 +41,7 @@ RANDOM_STATE = 42
 # Metric
 # ---------------------------------------------------------------------------
 
+
 def competition_metric(y_true: np.ndarray, y_pred: np.ndarray) -> float:
     """0.5 * MAE + 0.5 * RMSE — lower is better."""
     mae = np.mean(np.abs(y_true - y_pred))
@@ -52,6 +52,7 @@ def competition_metric(y_true: np.ndarray, y_pred: np.ndarray) -> float:
 # ---------------------------------------------------------------------------
 # Walk-forward CV splits
 # ---------------------------------------------------------------------------
+
 
 def get_walk_forward_splits(
     df: pd.DataFrame,
@@ -69,8 +70,6 @@ def get_walk_forward_splits(
 
     # Use last 30% of timeline as the rolling validation region
     val_start = int(n_weeks * 0.70)
-    val_weeks = sorted_weeks[val_start:]
-
     # Create n_folds cutpoints within the validation region
     cutpoints = np.linspace(val_start - 1, n_weeks - 3, n_folds, dtype=int)
     cutpoints = np.unique(cutpoints)  # deduplicate if linspace produces repeats
@@ -99,6 +98,7 @@ def get_walk_forward_splits(
 # ---------------------------------------------------------------------------
 # LightGBM training
 # ---------------------------------------------------------------------------
+
 
 def train_lightgbm(
     df: pd.DataFrame,
@@ -145,7 +145,9 @@ def train_lightgbm(
         y_val = val_df[target_col].values
 
         dtrain = lgb.Dataset(X_train, label=y_train, categorical_feature=cat_features)
-        dval = lgb.Dataset(X_val, label=y_val, categorical_feature=cat_features, reference=dtrain)
+        dval = lgb.Dataset(
+            X_val, label=y_val, categorical_feature=cat_features, reference=dtrain
+        )
 
         model = lgb.train(
             params,
@@ -161,18 +163,26 @@ def train_lightgbm(
         val_pred = model.predict(X_val)
         score = competition_metric(y_val, val_pred)
         fold_scores.append(score)
-        logger.info("  Fold %d: score=%.4f (n_train=%d, n_val=%d)", fold_idx + 1, score, len(train_idx), len(val_idx))
+        logger.info(
+            "  Fold %d: score=%.4f (n_train=%d, n_val=%d)",
+            fold_idx + 1,
+            score,
+            len(train_idx),
+            len(val_idx),
+        )
 
         for i, idx in enumerate(val_idx):
             row = val_df_orig.loc[idx]
-            oof_records.append({
-                "index": idx,
-                "County": row.get("County", ""),
-                "Year_Week": row.get(time_col, ""),
-                "y_true": float(y_val[i]),
-                "y_pred": float(val_pred[i]),
-                "fold": fold_idx + 1,
-            })
+            oof_records.append(
+                {
+                    "index": idx,
+                    "County": row.get("County", ""),
+                    "Year_Week": row.get(time_col, ""),
+                    "y_true": float(y_val[i]),
+                    "y_pred": float(val_pred[i]),
+                    "fold": fold_idx + 1,
+                }
+            )
 
         model_path = model_dir / "lightgbm" / f"fold_{fold_idx + 1}.pkl"
         model_path.parent.mkdir(parents=True, exist_ok=True)
@@ -191,7 +201,11 @@ def train_lightgbm(
     # Train-set in-sample score (leakage check)
     full_model = lgb.train(
         params,
-        lgb.Dataset(df_enc[feature_cols], label=df_enc[target_col].values, categorical_feature=cat_features),
+        lgb.Dataset(
+            df_enc[feature_cols],
+            label=df_enc[target_col].values,
+            categorical_feature=cat_features,
+        ),
         num_boost_round=int(np.mean([m.num_trees() for m in models])),
         callbacks=[lgb.log_evaluation(period=-1)],
     )
@@ -213,13 +227,19 @@ def train_lightgbm(
         "oof_path": str(oof_path),
         "full_model": full_model,
         "cat_encoders": cat_encoders,
-        "feature_importances": dict(zip(feature_cols, full_model.feature_importance(importance_type="gain").tolist())),
+        "feature_importances": dict(
+            zip(
+                feature_cols,
+                full_model.feature_importance(importance_type="gain").tolist(),
+            )
+        ),
     }
 
 
 # ---------------------------------------------------------------------------
 # XGBoost training
 # ---------------------------------------------------------------------------
+
 
 def train_xgboost(
     df: pd.DataFrame,
@@ -254,7 +274,7 @@ def train_xgboost(
     models: list[xgb.Booster] = []
 
     n_estimators = params.pop("n_estimators", 500)
-    eval_metric = params.pop("eval_metric", "mae")
+    params.pop("eval_metric", "mae")
 
     for fold_idx, (train_idx, val_idx) in enumerate(splits):
         train_df = df_enc.loc[train_idx]
@@ -283,18 +303,26 @@ def train_xgboost(
         val_pred = model.predict(dval)
         score = competition_metric(y_val, val_pred)
         fold_scores.append(score)
-        logger.info("  Fold %d: score=%.4f (n_train=%d, n_val=%d)", fold_idx + 1, score, len(train_idx), len(val_idx))
+        logger.info(
+            "  Fold %d: score=%.4f (n_train=%d, n_val=%d)",
+            fold_idx + 1,
+            score,
+            len(train_idx),
+            len(val_idx),
+        )
 
         for i, idx in enumerate(val_idx):
             row = val_df_orig.loc[idx]
-            oof_records.append({
-                "index": idx,
-                "County": row.get("County", ""),
-                "Year_Week": row.get(time_col, ""),
-                "y_true": float(y_val[i]),
-                "y_pred": float(val_pred[i]),
-                "fold": fold_idx + 1,
-            })
+            oof_records.append(
+                {
+                    "index": idx,
+                    "County": row.get("County", ""),
+                    "Year_Week": row.get(time_col, ""),
+                    "y_true": float(y_val[i]),
+                    "y_pred": float(val_pred[i]),
+                    "fold": fold_idx + 1,
+                }
+            )
 
         model_path = model_dir / "xgboost" / f"fold_{fold_idx + 1}.pkl"
         model_path.parent.mkdir(parents=True, exist_ok=True)
@@ -317,7 +345,9 @@ def train_xgboost(
         feature_names=feature_cols,
     )
     avg_best_round = int(np.mean([m.best_iteration for m in models]))
-    full_model = xgb.train(params, dtrain_full, num_boost_round=avg_best_round + 1, verbose_eval=False)
+    full_model = xgb.train(
+        params, dtrain_full, num_boost_round=avg_best_round + 1, verbose_eval=False
+    )
 
     train_pred = full_model.predict(dtrain_full)
     train_score = competition_metric(df[target_col].values, train_pred)
@@ -342,6 +372,7 @@ def train_xgboost(
 # ---------------------------------------------------------------------------
 # Trend extrapolation baseline
 # ---------------------------------------------------------------------------
+
 
 def train_trend_extrapolation(
     df: pd.DataFrame,
@@ -381,7 +412,11 @@ def train_trend_extrapolation(
             county_train = train_df[train_df["County"] == county].sort_values(time_col)
             if len(county_train) < 2:
                 # Fallback: predict last known value
-                pred = float(county_train[target_col].iloc[-1]) if len(county_train) >= 1 else float(train_df[target_col].mean())
+                pred = (
+                    float(county_train[target_col].iloc[-1])
+                    if len(county_train) >= 1
+                    else float(train_df[target_col].mean())
+                )
                 val_preds.append(pred)
                 continue
 
@@ -394,7 +429,9 @@ def train_trend_extrapolation(
             # Determine horizon (1=first step, 2=second step) per county
             county_val_sorted = val_df[val_df["County"] == county].sort_values(time_col)
             county_val_weeks = county_val_sorted[time_col].tolist()
-            horizon = county_val_weeks.index(week) + 1 if week in county_val_weeks else 1
+            horizon = (
+                county_val_weeks.index(week) + 1 if week in county_val_weeks else 1
+            )
             pred = last_obs + slope * horizon
             val_preds.append(pred)
 
@@ -406,18 +443,25 @@ def train_trend_extrapolation(
 
         for i, idx in enumerate(val_idx):
             row = val_df.loc[idx]
-            oof_records.append({
-                "index": idx,
-                "County": row.get("County", ""),
-                "Year_Week": row.get(time_col, ""),
-                "y_true": float(y_val[i]),
-                "y_pred": float(val_preds[i]),
-                "fold": fold_idx + 1,
-            })
+            oof_records.append(
+                {
+                    "index": idx,
+                    "County": row.get("County", ""),
+                    "Year_Week": row.get(time_col, ""),
+                    "y_true": float(y_val[i]),
+                    "y_pred": float(val_preds[i]),
+                    "fold": fold_idx + 1,
+                }
+            )
 
     cv_mean = float(np.mean(fold_scores))
     cv_std = float(np.std(fold_scores))
-    logger.info("Trend extrapolation CV: %.4f +/- %.4f  | folds: %s", cv_mean, cv_std, fold_scores)
+    logger.info(
+        "Trend extrapolation CV: %.4f +/- %.4f  | folds: %s",
+        cv_mean,
+        cv_std,
+        fold_scores,
+    )
 
     oof_df = pd.DataFrame(oof_records)
     oof_path = oof_dir / "trend_extrapolation_oof.parquet"
@@ -436,6 +480,7 @@ def train_trend_extrapolation(
 # ---------------------------------------------------------------------------
 # Test inference
 # ---------------------------------------------------------------------------
+
 
 def _encode_categoricals(
     df: pd.DataFrame,
@@ -464,7 +509,9 @@ def _predict_batch(
         return full_model.predict(df_enc[feature_cols])
     elif model_name == "xgboost":
         df_enc = _encode_categoricals(df, feature_cols, cat_encoders, dtype="int32")
-        dmat = xgb.DMatrix(df_enc[feature_cols].values.astype(float), feature_names=feature_cols)
+        dmat = xgb.DMatrix(
+            df_enc[feature_cols].values.astype(float), feature_names=feature_cols
+        )
         return full_model.predict(dmat)
     else:
         raise ValueError(f"Unknown model: {model_name}")
@@ -497,9 +544,15 @@ def predict_test(
 
         # Step 1: predict wk52 (all features observed)
         wk52_df = test_df[wk52_mask].copy()
-        wk52_preds = _predict_batch(model_name, full_model, wk52_df, feature_cols, cat_encoders)
+        wk52_preds = _predict_batch(
+            model_name, full_model, wk52_df, feature_cols, cat_encoders
+        )
         wk52_pred_by_county = dict(zip(wk52_df["County"].values, wk52_preds))
-        logger.info("%s wk52 preds: %s", model_name, {k: round(v, 2) for k, v in wk52_pred_by_county.items()})
+        logger.info(
+            "%s wk52 preds: %s",
+            model_name,
+            {k: round(v, 2) for k, v in wk52_pred_by_county.items()},
+        )
 
         # Step 2: fill wk1 lag1_price with wk52 prediction, then predict
         wk1_df = test_df[wk1_mask].copy()
@@ -510,22 +563,37 @@ def predict_test(
             # momentum = lag1 - lag2; lag2 for wk1 = wk51 actual (already in lag2_price col)
             wk1_df["price_momentum"] = wk1_df["lag1_price"] - wk1_df["lag2_price"]
 
-        if "deviation_from_rolling_mean" in feature_cols and "rolling_4w_mean" in feature_cols:
-            wk1_df["deviation_from_rolling_mean"] = wk1_df["lag1_price"] - wk1_df["rolling_4w_mean"]
+        if (
+            "deviation_from_rolling_mean" in feature_cols
+            and "rolling_4w_mean" in feature_cols
+        ):
+            wk1_df["deviation_from_rolling_mean"] = (
+                wk1_df["lag1_price"] - wk1_df["rolling_4w_mean"]
+            )
 
-        wk1_preds = _predict_batch(model_name, full_model, wk1_df, feature_cols, cat_encoders)
-        logger.info("%s wk1 preds: %s", model_name, dict(zip(wk1_df["County"].values, [round(p, 2) for p in wk1_preds])))
+        wk1_preds = _predict_batch(
+            model_name, full_model, wk1_df, feature_cols, cat_encoders
+        )
+        logger.info(
+            "%s wk1 preds: %s",
+            model_name,
+            dict(zip(wk1_df["County"].values, [round(p, 2) for p in wk1_preds])),
+        )
 
         # Assemble final submission
         all_counties = list(wk52_df["County"].values) + list(wk1_df["County"].values)
-        all_year_weeks = list(wk52_df["Year_Week"].values) + list(wk1_df["Year_Week"].values)
+        all_year_weeks = list(wk52_df["Year_Week"].values) + list(
+            wk1_df["Year_Week"].values
+        )
         all_preds = list(wk52_preds) + list(wk1_preds)
 
-        submission = pd.DataFrame({
-            "County": all_counties,
-            "Year_Week": all_year_weeks,
-            "WholeSale_pred": all_preds,
-        })
+        submission = pd.DataFrame(
+            {
+                "County": all_counties,
+                "Year_Week": all_year_weeks,
+                "WholeSale_pred": all_preds,
+            }
+        )
         submission["ID"] = submission.apply(
             lambda r: f"{r['County']}_Week_{int(r['Year_Week'].split('-')[1])}", axis=1
         )
@@ -542,6 +610,7 @@ def predict_test(
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Baseline model training")
@@ -583,7 +652,9 @@ def main() -> None:
         logger.warning("Missing feature columns: %s", missing)
         feature_cols = [c for c in feature_cols if c in df.columns]
 
-    logger.info("Features: %d | Target: %s | Time: %s", len(feature_cols), target_col, time_col)
+    logger.info(
+        "Features: %d | Target: %s | Time: %s", len(feature_cols), target_col, time_col
+    )
 
     all_results: list[dict[str, Any]] = []
     start_total = time.time()
@@ -593,7 +664,16 @@ def main() -> None:
         logger.info("=" * 50)
         logger.info("Training LightGBM...")
         t0 = time.time()
-        lgb_result = train_lightgbm(df, feature_cols, categorical_cols, target_col, time_col, cfg, model_dir, oof_dir)
+        lgb_result = train_lightgbm(
+            df,
+            feature_cols,
+            categorical_cols,
+            target_col,
+            time_col,
+            cfg,
+            model_dir,
+            oof_dir,
+        )
         lgb_result["train_time_s"] = round(time.time() - t0, 1)
         all_results.append(lgb_result)
 
@@ -602,7 +682,16 @@ def main() -> None:
         logger.info("=" * 50)
         logger.info("Training XGBoost...")
         t0 = time.time()
-        xgb_result = train_xgboost(df, feature_cols, categorical_cols, target_col, time_col, cfg, model_dir, oof_dir)
+        xgb_result = train_xgboost(
+            df,
+            feature_cols,
+            categorical_cols,
+            target_col,
+            time_col,
+            cfg,
+            model_dir,
+            oof_dir,
+        )
         xgb_result["train_time_s"] = round(time.time() - t0, 1)
         all_results.append(xgb_result)
 
@@ -621,7 +710,9 @@ def main() -> None:
     if test_df is not None:
         logger.info("=" * 50)
         logger.info("Generating test predictions...")
-        predict_test(test_df, feature_cols, categorical_cols, all_results, submissions_dir)
+        predict_test(
+            test_df, feature_cols, categorical_cols, all_results, submissions_dir
+        )
 
     # --- Summary ---
     summary: dict[str, Any] = {
@@ -644,29 +735,35 @@ def main() -> None:
             "cv_mean": round(r["cv_mean"], 4),
             "cv_std": round(r["cv_std"], 4),
             "fold_scores": [round(s, 4) for s in r["fold_scores"]],
-            "train_score": round(r["train_score"], 4) if r.get("train_score") is not None else None,
+            "train_score": round(r["train_score"], 4)
+            if r.get("train_score") is not None
+            else None,
             "train_time_s": r.get("train_time_s", 0),
             "oof_path": r["oof_path"],
         }
         summary["models"].append(row)
         logger.info(
             "%-25s %10.4f %10.4f %11.1fs",
-            r["model"], r["cv_mean"], r["cv_std"], r.get("train_time_s", 0)
+            r["model"],
+            r["cv_mean"],
+            r["cv_std"],
+            r.get("train_time_s", 0),
         )
 
     logger.info("-" * 60)
     logger.info("Total time: %.1fs", total_time)
 
     best = min(all_results, key=lambda x: x["cv_mean"])
-    logger.info("Best model: %s (CV %.4f vs naive %.3f)", best["model"], best["cv_mean"], 2.907)
+    logger.info(
+        "Best model: %s (CV %.4f vs naive %.3f)", best["model"], best["cv_mean"], 2.907
+    )
     summary["best_model"] = best["model"]
     summary["best_cv"] = round(best["cv_mean"], 4)
     summary["total_time_s"] = total_time
 
     # Save results JSON
     serializable_summary = {
-        k: v for k, v in summary.items()
-        if k != "feature_importances"
+        k: v for k, v in summary.items() if k != "feature_importances"
     }
     with open(results_path, "w", encoding="utf-8") as f:
         json.dump(serializable_summary, f, indent=2)
